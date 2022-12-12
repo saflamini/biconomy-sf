@@ -30,20 +30,19 @@ async function main() {
 
   const sf = await Framework.create({
     chainId: (await provider.getNetwork()).chainId,
-    provider: provider,
-    customSubgraphQueriesEndpoint: "",
-    dataMode: "WEB3_ONLY"
+    provider: provider
   });
 
 
   const daix = await sf.loadSuperToken("fDAIx");
 
-  let mySigner = new ethers.Wallet(process.env.PRIVATE_KEY)
+  let mySigner = new ethers.Wallet(`0x${process.env.PRIVATE_KEY}`)
 
+  console.log(mySigner.address)
   let biconomy = new Biconomy(provider, {
     apiKey: 'ieykFwRbY.0b9399ed-52ec-4f34-acb0-7798ea9e30ec',
     debug: true,
-    contractAddresses: '0x22ff293e14f1ec3a09b137e9e06084afd63addf9',
+    contractAddresses: '0x22ff293e14F1EC3A09B137e9e06084AFd63adDF9',
   })
 
   biconomy.onEvent(biconomy.READY, async () => {
@@ -66,8 +65,8 @@ async function main() {
 
 
   const tx = cfaInterface.encodeFunctionData(
-    "authorizeFlowOperatorWithFullControl",
-    [daix.address, "0xaEFb2595E0681E16bBEB3FbA57dFA2CceA824A9A", "0x"]
+    "deleteFlow",
+    [daix.address, mySigner.address, "0xaEFb2595E0681E16bBEB3FbA57dFA2CceA824A9A", "0x"]
 );  
 
   // const operation = 
@@ -100,8 +99,9 @@ async function main() {
   
   
   let rawTx = {
-    to: '0x22ff293e14f1ec3a09b137e9e06084afd63addf9',
+    to: '0x22ff293e14F1EC3A09B137e9e06084AFd63adDF9',
     data: baseTx,
+    gasLimit: 2000000,
     from: mySigner.address
   }
 
@@ -109,23 +109,24 @@ async function main() {
 
   let forwardData = await biconomy.getForwardRequestAndMessageToSign(signedTx);
 
-  console.log(forwardData)
+  // console.log(forwardData)
 
-  // let signature = sigUtil.signTypedMessage(new Buffer.from(process.env.PRIVATE_KEY, 'hex'), {data: forwardData.eip712Format }, 'V3')
+  //note that the private key here cannot contain '0x'
+  let signature = sigUtil.signTypedMessage(new Buffer.from(`0x${process.env.PRIVATE_KEY}`, 'hex'), {data: forwardData.eip712Format }, 'V3')
 
-  // let data = {
-  //   signature: signature,
-  //   forwardRequest: forwardData.request,
-  //   rawTransaction: signedTx,
-  //   signatureType: biconomy.EIP712_SIGN
-  // }
+  let data = {
+    signature: signature,
+    forwardRequest: forwardData.request,
+    rawTransaction: signedTx,
+    signatureType: biconomy.EIP712_SIGN
+  }
 
-  // let p = biconomy.getEthersProvider()
-  // let txHash = await p.send("eth_sendRawTransaction", [data]);
+  let p = biconomy.getEthersProvider()
+  let txHash = await p.send("eth_sendRawTransaction", [data]);
 
-  // let receipt = await p.waitForTransaction(txHash);
+  let receipt = await p.waitForTransaction(txHash);
 
-  // console.log(receipt);
+  console.log(receipt);
   })
 }
 
